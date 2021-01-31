@@ -48,27 +48,12 @@ void View::normalize() {
 }
 
 Matrix<4, 4> View::getViewMatrix() const {
-  std::cout << "Yo\n";
-  std::cout << m_origin << "\n";
-  std::cout << m_focus << "\n";
-  std::cout << m_up << "\n";
-
   Vector<3> z = m_origin.to(m_focus).normalized();
   Vector<3> y = m_up.copy();
   Vector<3> x = y.cross(z);
 
-  std::cout << "getViewMatrixFirst\n";
-  std::cout << x << "\n";
-  std::cout << y << "\n";
-  std::cout << z << "\n";
-
   y = z.cross(x).normalized();
   x = x.normalized();
-
-  std::cout << "getViewMatrixSecond\n";
-  std::cout << x << "\n";
-  std::cout << y << "\n";
-  std::cout << z << "\n";
 
   Matrix<4, 4> viewMatrix;
   viewMatrix.set(0, 0, x.get(0));

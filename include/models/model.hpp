@@ -54,7 +54,7 @@ void Model::translate(const Vector<3> &translation) {
     0.0f, 0.0f, 0.0f, 1.0f
   }};
 
-  m_modelMatrix = m_modelMatrix.mul(translationMatrix);
+  m_modelMatrix = translationMatrix.mul(m_modelMatrix);
 }
 
 void Model::rotateX(const float theta) {

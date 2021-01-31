@@ -17,13 +17,6 @@
 
 int main() {
 
-  Matrix<4, 4> mat;
-  std::cout << mat << "\n";
-
-  Vector<4> vec = {{1, 1, 1, 1}};
-  vec = vec.normalized();
-  std::cout << vec << "\n";
-
   Cube cube;
   View view(
       {{0.0f, 0.0f, 0.0f}},
@@ -32,16 +25,23 @@ int main() {
   );
   Projection projection;
 
+  Vector<3> lightDirection = {{-1.0, -1.0, 1.0}};
+  lightDirection = lightDirection.normalized();
+
   const GLchar* vertexShaderSource = GLSL(
     in vec3 vPosition;
+    in vec3 vNormal;
     out vec4 fColor;
+
+    uniform vec3 lightDirection;
 
     uniform mat4 model;
     uniform mat4 view;
     uniform mat4 projection;
   
     void main() {
-      fColor = vec4(1.0, 1.0, 1.0, 1.0);
+      float lightIntensity = dot(model*vec4(vNormal, 0.0), -vec4(lightDirection, 0.0));
+      fColor = vec4(vec3(lightIntensity), 1.0);
       gl_Position = projection*view*model*vec4(vPosition, 1.0);
     }
   );
@@ -81,8 +81,8 @@ int main() {
   glewExperimental = GL_TRUE;
   glewInit();
 
-  //glEnable(GL_BLEND);
-  //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -95,7 +95,7 @@ int main() {
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBufferData(
       GL_ARRAY_BUFFER,
-      static_cast<GLsizeiptr>(cube.getVerticesSize())*3,
+      static_cast<GLsizeiptr>(cube.getVerticesSize())*6,
       cube.getVertices().data(),
       GL_STATIC_DRAW
   );
@@ -133,7 +133,14 @@ int main() {
 
   GLuint positionAttribute = static_cast<GLuint>(glGetAttribLocation(shaderProgram, "vPosition"));
   glEnableVertexAttribArray(positionAttribute);
-  glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, 3*sizeof(float), 0);
+  glVertexAttribPointer(positionAttribute, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), 0);
+  
+  GLuint normalAttribute = static_cast<GLuint>(glGetAttribLocation(shaderProgram, "vNormal"));
+  glEnableVertexAttribArray(normalAttribute);
+  glVertexAttribPointer(normalAttribute, 3, GL_FLOAT, GL_FALSE, 6*sizeof(float), reinterpret_cast<void*>(3*sizeof(float)));
+
+  GLint uniLightDirection = glGetUniformLocation(shaderProgram, "lightDirection");
+  glUniform3f(uniLightDirection, lightDirection.get(0), lightDirection.get(1), lightDirection.get(2));
 
   GLint uniModel = glGetUniformLocation(shaderProgram, "model");
   glUniformMatrix4fv(uniModel, 1, GL_FALSE, cube.getModelMatrix().getData());
@@ -161,20 +168,19 @@ int main() {
     // Model View Setup
 
     cube.setModelMatrix(Matrix<4, 4>());
-    cube.rotateX(std::fmod(time/2.0f, M_PI*2));
-    cube.rotateY(std::fmod(time/2.0f, M_PI*2));
-    // cube.translate({{static_cast<float>(mouseX)*10.0f, static_cast<float>(mouseY)*10.0f, 10.0f}});
+    cube.rotateX(static_cast<float>(std::fmod(time/2.0, M_PI*2)));
+    cube.rotateY(static_cast<float>(std::fmod(time/2.0, M_PI*2)));
 
     view.setOrigin({{
-      0.0, 0.0, -10.0f
+      0.0, 0.0, -5.0f
     }});
     view.setFocus({{
-        0.0f,// static_cast<float>(mouseX),
-        0.0f,// static_cast<float>(mouseY),
-        -9.0f
+        static_cast<float>(mouseX),
+        static_cast<float>(mouseY),
+        -4.0f
     }});
     view.setUp({{0.0f, 1.0f, 0.0f}});
-//    view.normalize();
+    view.normalize();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindVertexArray(vao);
@@ -185,16 +191,12 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     Matrix<4, 4> identMat;
-
-    std::cout << view.getViewMatrix() << "\n";
     
     glUniformMatrix4fv(uniModel, 1, GL_FALSE, cube.getModelMatrix().getData());
     glUniformMatrix4fv(uniView, 1, GL_FALSE, view.getViewMatrix().getData());
     glUniformMatrix4fv(uniProjection, 1, GL_FALSE, projection.getProjectionMatrix().getData());
-    //glUniformMatrix4fv(uniView, 1, GL_FALSE, identMat.getData());
-    //glUniformMatrix4fv(uniProjection, 1, GL_FALSE, identMat.getData());
 
-    glDrawArrays(GL_TRIANGLES, 0, 36*3);// static_cast<GLsizei>(cube.getNumVertices()));
+    glDrawArrays(GL_TRIANGLES, 0, 36);// static_cast<GLsizei>(cube.getNumVertices()));
     
     glfwSwapBuffers(window);
     glfwPollEvents();
